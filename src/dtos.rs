@@ -100,3 +100,146 @@ impl UserSendFileDto{
 pub fn filter_send_user_file(user: &[SentFileDetails]) -> vec<UserSendFileDto>{
     user.iter().map(UserSendFileDto::filter_send_user_file).collect()
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserSendFileListResponseDto {
+    pub status: String,
+    pub files: Vec<UserSendFileDto>,
+    pub results: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserReceiveFileDto {
+    pub file_id: String,
+    pub file_name: String,
+    pub sender_email: String,
+    pub expiration_date: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl UserReceiveFileDto {
+    pub fn filter_receive_user_file(file_data: &ReceiveFileDetails) -> Self {
+        UserReceiveFileDto {
+            file_id: file_data.file_id.to_string(),
+            file_name: file_data.file_name.to_owned(),
+            sender_email: file_data.sender_email.to_owned(),
+            expiration_date: file_data.expiration_date.unwrap(),
+            created_at: file_data.created_at.unwrap(),
+        }
+    }
+
+    pub fn filter_receive_user_files(user: &[ReceiveFileDetails]) -> Vec<UserReceiveFileDto> {
+        user.iter().map(UserReceiveFileDto::filter_receive_user_file).collect()
+    }
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserReceiveFileListResponseDto {
+    pub status: String,
+    pub files: Vec<UserReceiveFileDto>,
+    pub results: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserLoginResponseDto{
+    pub status:String,
+    pub token:String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Response{
+    pub status: &'static str,
+    pub message:String,
+}
+
+#[derive(Validate , Debug, Default,Clone, Serialize,Deserialize)]
+pub struct NameUpdateDto{
+    #[validate(length(min=1 , message="name is required"))]
+    pub name :String
+}
+
+#[derive(Validate , Debug, Default,Clone, Serialize,Deserialize)]
+pub struct UserPasswordUpdateDto{
+  #[validate(length(min=6 , message="password must be at least 6 characters"))]
+    pub new_password:String,
+
+    #[validate(length(min=6 , message="password must be at least 6 characters") , must_match(other="new_password",message="new passwords do not match"))]
+    pub new_password_confirm:String,
+
+    #[validate(length(min=6 , message ="Please enter your old password"))]
+    pub old_password :String,
+}
+
+#[derive(Validate , Debug, Default,Clone, Serialize,Deserialize)]
+pub struct SearchQuesryByEmailDto{
+    #[validate(length(min=1, message="Query is requireed"))]
+    pub query :String,
+}
+
+#[derive( Debug, Serialize,Deserialize)]
+pub struct FilterEmailDto{
+    pub email:String,
+}
+
+impl FilterEmailDto{
+    pub fn filter_email(user:&User) -> Self{
+        FilterEmailDto { email:user.email.to_owned(), }
+    }
+    pub fn filter_emails(user: &[User]) -> Vec<FilterEmailDto> {
+        user.iter().map(FilterEmailDto::filter_email).collect()
+    }
+}
+
+#[derive(Debug , Serialize,Deserialize)]
+pub struct EmailListResponseDto{
+    pub status:Struct,
+    pub emails:Vec<FilterEmailDto>,
+}
+
+
+#[derive(Validate, Debug, Default, Clone, Serialize, Deserialize)]
+pub struct FileUploadDtos {
+    #[validate(email(message = "Invalid email format"))]
+    pub recipient_email: String,
+
+    #[validate(
+        
+        length(min = 6, message = "New password must be at least 6 characters")
+    )]
+    pub password: String,
+
+    #[validate(custom (function ="validate_expiration_date"))]
+    pub expiration_date: String,
+}
+
+fn validate_expiration_date(expiration_date:&str) -> Resault<(),ValidationError>{
+    if expiration_date.is_empty(){
+        let mut error = ValidationError::new("expiration_date_required");
+        error.message=some("Expiration date is required".into());
+        return Err(error);
+    }
+    let parsed_data = DateTime::parse_from_rfc3339(expiration_date)
+    .map_err(|_|{
+        let mut error = ValidationError::new("invalid_date_format");
+        error.message=Some("Invalid date format. Expected formate is YYYY-MM-DDTHH:MM:SS.ssssssz.".into());
+        error
+    })?;
+    let now = Utc::now();
+    if parsed_data <= now {
+        let mut error = ValidationError::new("expiration_date_future");
+        error.message = Some("Expiration date must be in the future.".into());
+    }
+    ok(())
+}
+
+#[derive(Validate, Debug, Default, Clone, Serialize, Deserialize)]
+pub struct RetrieveFileDto {
+    #[validate(length(min = 1, message = "Shared id is required"))]
+    pub shared_id: String,
+
+    #[validate(
+       length(min = 6, message = "Password must be at least 6 characters")
+    )]
+    pub password: String,
+}
